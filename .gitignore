@@ -1,0 +1,33 @@
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+
+# Local environments and credentials
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Python caches and generated packages
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# pre-commit hook environments, when the linter workflow's PRE_COMMIT_HOME
+# lands in the working copy (hundreds of MB of venvs — never commit)
+.pre-commit-cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+*.egg-info/
+build/
+dist/
+.coverage
+htmlcov/
+*.whl
+*.tar.gz
