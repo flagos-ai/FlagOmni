@@ -23,9 +23,12 @@ relevant documentation alongside user-facing behavior.
 
 ## Implement and validate
 
-Place operator implementations under `src/flag_omni/ops/` for generic Triton kernels,
-and `src/flag_omni/runtime/backend/_<vendor>/` for hardware-specific implementations.
-Keep corresponding tests and benchmarks in `tests/` and `benchmark/`.
+Place generic Triton operators under `src/flag_omni/<framework>/` and
+hardware-specific implementations under
+`src/flag_omni/runtime/backend/_<vendor>/<framework>/`. Architecture-specific
+implementations belong below the framework directory (for example,
+`_nvidia/lightx2v/hopper/`). Keep corresponding tests and benchmarks in
+`tests/<framework>/` and `benchmark/<framework>/`.
 
 Run the full test suite before opening a pull request:
 

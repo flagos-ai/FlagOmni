@@ -12,6 +12,17 @@ For generation framework developers, FlagOmni aims to provide Triton implementat
 
 The project is under active development: documentation and component implementations are added incrementally, and component and hardware compatibility have not been fully validated.
 
+## Available LightX2V operators
+
+The `flag_omni.lightx2v` namespace provides H3 normalization, activation, VAE
+fusions, reference blending and rotary tables, plus SageAttention with separate
+generic BF16-PV, NVIDIA SM90 FP8-PV and fixed-shape S5000 prequantized contracts.
+Imports do not install framework hooks or load optional advanced compiler modules.
+
+- [LightX2V APIs, installation and tests](docs/lightx2v.md)
+- [SageAttention contracts, final-source provenance and compiler prerequisites](docs/sage_attention.md)
+- [Migration validation and remaining limits](docs/lightx2v-validation.md)
+
 ## Installation
 
 ```bash
@@ -54,9 +65,9 @@ FlagOmni/
 │   ├── runtime/
 │   │   └── backend/                # Multi-hardware backends: vendor → framework
 │   │       ├── _nvidia/
-│   │       │   └── lightx2v/       # NVIDIA specializations 
+│   │       │   └── lightx2v/       # NVIDIA specializations
 │   │       └── _mthreads/
-│   │           └── lightx2v/       # MThreads specializations 
+│   │           └── lightx2v/       # MThreads specializations
 │   ├── testing/                    # Shared test utilities and fixtures
 │   └── utils/                      # Device detection, config loading, type helpers
 ├── tests/

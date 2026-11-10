@@ -38,6 +38,8 @@ Issues = "https://github.com/flagos-ai/FlagOmni/issues"
 [project.optional-dependencies]
 test = [
     "pytest>=8.0",
+    "torch",
+    "numpy",
 ]
 
 [tool.uv]

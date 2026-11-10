@@ -12,6 +12,16 @@ FlagOmni 是一个使用 [Triton](https://github.com/triton-lang/triton) 实现�
 
 本项目正在积极开发中：文档和组件实现会持续增加，组件和硬件兼容性尚未完全验证。
 
+## 已提供的 LightX2V 算子
+
+`flag_omni.lightx2v` 提供 H3 归一化、激活、VAE 融合、reference blend 和旋转位置表，
+以及通用 BF16-PV、NVIDIA SM90 FP8-PV 和固定 shape 的 S5000 预量化 SageAttention。
+三条 Sage 路径有独立数值合约，不会静默切换精度。导入包不会安装框架 hook 或加载高级编译模块。
+
+- [LightX2V API 与测试](docs/lightx2v.md)
+- [SageAttention 数值合约、最终源码与编译器依赖](docs/sage_attention.md)
+- [迁移验证范围与剩余限制](docs/lightx2v-validation.md)
+
 ## 安装
 
 ```bash
