@@ -50,30 +50,45 @@ FlagOmni 与 FlagOS 生态中的算子库、编译器和推理框架协作开发
 ```text
 FlagOmni/
 ├── src/flag_omni/
-│   ├── lightx2v/                   # LightX2V 相关计算实现
+│   ├── lightx2v/                   # LightX2V 通用 Triton 算子（归一化、激活、融合…）
 │   ├── runtime/
-│   │   └── backend/
+│   │   └── backend/                # 多硬件后端：厂商 → 框架
 │   │       ├── _nvidia/
-│   │       │   └── lightx2v/       # NVIDIA 硬件特化实现
+│   │       │   └── lightx2v/       # NVIDIA 硬件特化（SM90 Gluon/PTX）
 │   │       └── _mthreads/
-│   │           └── lightx2v/       # 摩尔线程硬件特化实现
-│   ├── testing/                    # 共享测试工具
-│   └── utils/                      # 共享工具模块
+│   │           └── lightx2v/       # 摩尔线程硬件特化（TLE）
+│   ├── testing/                    # 共享测试工具与 fixture
+│   └── utils/                      # 设备检测、配置加载、类型转换
 ├── tests/
-│   └── lightx2v/                   # 按框架组织的正确性测试
+│   └── lightx2v/                   # 合约测试与数值测试
 ├── benchmark/
-│   └── lightx2v/                   # 按框架组织的性能基准
+│   └── lightx2v/                   # 时延与吞吐量基准
 ├── conf/
-│   └── operators.yaml              # 算子注册元数据
+│   └── operators.yaml              # 算子注册表元数据
 ├── docs/                           # 文档
-├── tools/                          # 开发和维护工具
+├── tools/                          # CI 脚本、GPU 检测、代码生成
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 ├── LICENSE
 └── pyproject.toml
 ```
 
-每个框架目录存放其 Triton 计算实现和接口封装。硬件特化的优化放在 `runtime/backend/_<厂商>/<框架>/` 下。新增框架时，只需在各层级创建新的同级目录，无需修改现有代码。
+通用算子放在 `src/flag_omni/<框架>/`，硬件特化放在 `runtime/backend/_<厂商>/<框架>/`，各框架与各硬件后端的代码完全隔离。
+
+### 新增框架
+
+以 FastVideo 为例，新增一个生成框架只需以下步骤：
+
+1. **通用算子**：创建 `src/flag_omni/fastvideo/` 目录，放置该框架的 Triton 算子实现
+2. **硬件特化**：在每个需要特化的硬件后端下创建对应子目录
+   - `src/flag_omni/runtime/backend/_nvidia/fastvideo/`
+   - `src/flag_omni/runtime/backend/_mthreads/fastvideo/`
+3. **测试与基准**：创建对应的测试和性能基准目录
+   - `tests/fastvideo/`
+   - `benchmark/fastvideo/`
+4. **算子注册**：在 `conf/operators.yaml` 中添加算子条目，使用 `from: [fastvideo]` 标注来源框架
+
+新增框架不需要修改现有框架的代码，各框架的算子实现完全隔离。
 
 ## 开发与验证
 

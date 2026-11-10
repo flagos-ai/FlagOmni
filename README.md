@@ -50,30 +50,45 @@ FlagOmni is developed in collaboration with operator libraries, compilers, and i
 ```text
 FlagOmni/
 ├── src/flag_omni/
-│   ├── lightx2v/                   # LightX2V-related computation implementations
+│   ├── lightx2v/                   # LightX2V generic Triton operators (norm, activation, fusion …)
 │   ├── runtime/
-│   │   └── backend/
+│   │   └── backend/                # Multi-hardware backends: vendor → framework
 │   │       ├── _nvidia/
-│   │       │   └── lightx2v/       # NVIDIA hardware-specific implementations
+│   │       │   └── lightx2v/       # NVIDIA specializations (SM90 Gluon/PTX)
 │   │       └── _mthreads/
-│   │           └── lightx2v/       # MThreads hardware-specific implementations
-│   ├── testing/                    # Shared test utilities
-│   └── utils/                      # Shared utility modules
+│   │           └── lightx2v/       # MThreads specializations (TLE)
+│   ├── testing/                    # Shared test utilities and fixtures
+│   └── utils/                      # Device detection, config loading, type helpers
 ├── tests/
-│   └── lightx2v/                   # Correctness tests by framework
+│   └── lightx2v/                   # Contract and numerical tests
 ├── benchmark/
-│   └── lightx2v/                   # Performance benchmarks by framework
+│   └── lightx2v/                   # Latency and throughput benchmarks
 ├── conf/
 │   └── operators.yaml              # Operator registry metadata
 ├── docs/                           # Documentation
-├── tools/                          # Development and maintenance tools
+├── tools/                          # CI scripts, GPU detection, code generation
 ├── CONTRIBUTING.md
 ├── SECURITY.md
 ├── LICENSE
 └── pyproject.toml
 ```
 
-Each framework directory houses its Triton computation implementations and interface wrappers. Hardware-specific optimizations are placed under `runtime/backend/_<vendor>/<framework>/`. When new frameworks are added, a new sibling directory is created at each level without modifying existing code.
+Generic operators live in `src/flag_omni/<framework>/`, hardware specializations in `runtime/backend/_<vendor>/<framework>/`. Each framework and hardware backend stays fully isolated.
+
+### Adding a New Framework
+
+Using FastVideo as an example, adding a new generation framework requires the following steps:
+
+1. **Generic operators**: Create `src/flag_omni/fastvideo/` to hold the framework's Triton operator implementations
+2. **Hardware specializations**: Create sub-directories under each hardware backend that needs specialization
+   - `src/flag_omni/runtime/backend/_nvidia/fastvideo/`
+   - `src/flag_omni/runtime/backend/_mthreads/fastvideo/`
+3. **Tests and benchmarks**: Create the corresponding test and benchmark directories
+   - `tests/fastvideo/`
+   - `benchmark/fastvideo/`
+4. **Operator registration**: Add operator entries in `conf/operators.yaml` with `from: [fastvideo]` to indicate the source framework
+
+Adding a new framework does not require modifying any existing framework's code — each framework's operator implementations are fully isolated.
 
 ## Development and Validation
 
