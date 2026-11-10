@@ -54,9 +54,9 @@ FlagOmni/
 │   ├── runtime/
 │   │   └── backend/                # 多硬件后端：厂商 → 框架
 │   │       ├── _nvidia/
-│   │       │   └── lightx2v/       # NVIDIA 硬件特化（SM90 Gluon/PTX）
+│   │       │   └── lightx2v/       # NVIDIA 硬件特化
 │   │       └── _mthreads/
-│   │           └── lightx2v/       # 摩尔线程硬件特化（TLE）
+│   │           └── lightx2v/       # MThreads 硬件特化
 │   ├── testing/                    # 共享测试工具与 fixture
 │   └── utils/                      # 设备检测、配置加载、类型转换
 ├── tests/

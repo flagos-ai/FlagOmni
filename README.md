@@ -54,9 +54,9 @@ FlagOmni/
 │   ├── runtime/
 │   │   └── backend/                # Multi-hardware backends: vendor → framework
 │   │       ├── _nvidia/
-│   │       │   └── lightx2v/       # NVIDIA specializations (SM90 Gluon/PTX)
+│   │       │   └── lightx2v/       # NVIDIA specializations 
 │   │       └── _mthreads/
-│   │           └── lightx2v/       # MThreads specializations (TLE)
+│   │           └── lightx2v/       # MThreads specializations 
 │   ├── testing/                    # Shared test utilities and fixtures
 │   └── utils/                      # Device detection, config loading, type helpers
 ├── tests/
