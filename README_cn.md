@@ -12,6 +12,16 @@ FlagOmni 是一个使用 [Triton](https://github.com/triton-lang/triton) 实现�
 
 本项目正在积极开发中：文档和组件实现会持续增加，组件和硬件兼容性尚未完全验证。
 
+## 已提供的 LightX2V 算子
+
+通用算子接口位于 `flag_omni.lightx2v`，模型策略与框架接线属于 `lightx2v-plugin-FL`。
+SageAttention 对外仅有 `sage_attention`，内部根据设备和数值契约分发。
+原始 BF16 QKV 在 CUDA/MUSA 上走通用实现；原始 FP8-PV 全调用目前仅支持 SM90。
+MP31 已有优化核通过同一入口的通用 `quantization` 元数据接收预量化输入，
+不冒充已接通原始 QKV 量化链。完整输入、scale、workspace 与工具链契约见
+[英文 README](README.md#available-lightx2v-operators)。不支持的组合在计算前报错，
+不静默降精度，不在执行失败后更换实现重试。
+
 ## 安装
 
 ```bash
@@ -51,6 +61,7 @@ FlagOmni 与 FlagOS 生态中的算子库、编译器和推理框架协作开发
 FlagOmni/
 ├── src/flag_omni/
 │   ├── lightx2v/                   # LightX2V 通用 Triton 算子（归一化、激活、融合…）
+│   │   └── ops/                    # Portable operator implementations
 │   ├── runtime/
 │   │   └── backend/                # 多硬件后端：厂商 → 框架
 │   │       ├── _nvidia/

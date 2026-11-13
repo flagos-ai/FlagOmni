@@ -12,5 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ops: []
-# Operators will be added as framework integrations are merged.
+ops:
+  - id: reference_blend
+    from: [lightx2v]
+    contract: FP32 native-order H3 reference-blend scheduler update
+  - id: rms_norm
+    from: [lightx2v]
+    contract: BF16 D128 or D5376, multiply weight in FP32 before final cast
+    tiers: [baseline, tle, sm90]
+  - id: rotary_tables
+    from: [lightx2v]
+    contract: SM90 FP64 frequency power and FP32 trigonometric position tables
+    tiers: [sm90]
+  - id: packed_swiglu
+    from: [lightx2v]
+    contract: packed value-gate projection, input-precision SiLU boundary
+  - id: qk_norm_rope
+    from: [lightx2v]
+    contract: D64 RMS and 48-channel split rotary embedding
+  - id: scaled_residual
+    from: [lightx2v]
+    contract: FP32 residual state and FP16 update
+  - id: residual_rms_norm
+    from: [lightx2v]
+    contract: D2048 FP32 residual RMS and FP16 normalized output
+  - id: sage_attention
+    from: [lightx2v]
+    contract: Automatic platform dispatch with explicit BF16 or FP8 precision and optional prequantized metadata
+    sources:
+      - https://github.com/CherryLemon/FlagGems-lightx2v/pull/1
+      - https://github.com/flagos-ai/FlagGems/pull/8459

@@ -12,6 +12,35 @@ For generation framework developers, FlagOmni aims to provide Triton implementat
 
 The project is under active development: documentation and component implementations are added incrementally, and component and hardware compatibility have not been fully validated.
 
+## Available LightX2V operators
+
+`flag_omni.lightx2v` exposes normalization, packed SwiGLU, Q/K norm+RoPE,
+scaled residual, reference blending, rotary tables and `sage_attention`.
+Model policy and framework hooks belong in `lightx2v-plugin-FL`, not this library.
+
+SageAttention has one public entry, selected internally by device and numerical
+contract. `sage_attention(q, k, v, pv_dtype="bf16")` supports raw BF16 QKV on
+CUDA/MUSA through the portable implementation. Raw `pv_dtype="fp8"` currently
+requires CUDA SM90 and a compatible FlagTree TLE build; unsupported combinations
+fail before compute, never silently change precision or retry after execution.
+
+The same entry accepts prequantized inputs with `pv_dtype="fp8"` and
+`quantization={"format": "per_thread_int8_fp8", "query_scale": qs,
+"key_scale": ks, "value_scale": vs}`. The current MP31 backend requires contiguous
+NHD Q/K INT8 and V E4M3 `[1,34498,7,128]`, with FP32 scale shapes
+`[1,7,17280]`, `[1,7,1080]`, `[1,7,128]`. Q scales index `(m//16)*8+m%8`, K scales
+index `(n//128)*4+(n%8)//2`; V scales are per head/channel. This is a distinct
+prequantized contract, not a raw-QKV-to-MP31 quantization implementation.
+A compatible MP31 FlagTree TLE toolchain and MUSA SDK (`FLAGOMNI_MUSA_SDK`, default
+`/usr/local/musa`) are required. Finite quantized values and finite positive scales
+are caller preconditions, not scanned on the hot path.
+
+For repeated prequantized calls, pass a caller-owned `workspace={}` and warm up
+before graph capture. Keep the workspace and input storage alive, update input
+values in place, and do not share it concurrently between streams. Output storage
+is reused; clone retained results. `return_fp32=True` also returns the same-call
+FP32 output for diagnostic checks. No global tensor cache is used.
+
 ## Installation
 
 ```bash
@@ -51,12 +80,13 @@ FlagOmni is developed in collaboration with operator libraries, compilers, and i
 FlagOmni/
 ├── src/flag_omni/
 │   ├── lightx2v/                   # LightX2V generic Triton operators (norm, activation, fusion …)
+│   │   └── ops/                    # Portable operator implementations
 │   ├── runtime/
 │   │   └── backend/                # Multi-hardware backends: vendor → framework
 │   │       ├── _nvidia/
-│   │       │   └── lightx2v/       # NVIDIA specializations 
+│   │       │   └── lightx2v/       # NVIDIA specializations
 │   │       └── _mthreads/
-│   │           └── lightx2v/       # MThreads specializations 
+│   │           └── lightx2v/       # MThreads specializations
 │   ├── testing/                    # Shared test utilities and fixtures
 │   └── utils/                      # Device detection, config loading, type helpers
 ├── tests/
@@ -73,7 +103,7 @@ FlagOmni/
 └── pyproject.toml
 ```
 
-Generic operators live in `src/flag_omni/<framework>/`, hardware specializations in `runtime/backend/_<vendor>/<framework>/`. Each framework and hardware backend stays fully isolated.
+Generic operators live in `src/flag_omni/<framework>/ops/`, hardware specializations in `runtime/backend/_<vendor>/<framework>/`. Each framework and hardware backend stays fully isolated.
 
 ### Adding a New Framework
 
