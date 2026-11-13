@@ -18,7 +18,7 @@ import torch.nn.functional as F
 
 import flag_omni.lightx2v as ops
 
-pytestmark = pytest.mark.h3_vae_qk_norm_rope
+pytestmark = pytest.mark.qk_norm_rope
 
 
 def test_vae_qk_native_chain(accelerator):
@@ -28,7 +28,7 @@ def test_vae_qk_native_chain(accelerator):
     ]
     phase = torch.randn((1, 17, 1, 48), device=accelerator, dtype=torch.float32)
     cos, sin = phase.cos(), phase.sin()
-    actual = ops.h3_vae_qk_norm_rope(q, k, cos, sin, 1e-5)
+    actual = ops.qk_norm_rope(q, k, cos, sin, 1e-5)
     for original, output in zip((q, k), actual):
         normalized = F.rms_norm(original.float(), (64,), None, 1e-5).to(original.dtype)
         first, second = normalized[..., :48].chunk(2, -1)

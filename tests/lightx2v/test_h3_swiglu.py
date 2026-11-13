@@ -18,7 +18,7 @@ import torch.nn.functional as F
 
 import flag_omni.lightx2v as ops
 
-pytestmark = pytest.mark.h3_swiglu
+pytestmark = pytest.mark.packed_swiglu
 
 
 @pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
@@ -30,7 +30,7 @@ def test_swiglu_native_boundary(accelerator, dtype, rows):
     )
     value, gate = packed.chunk(2, -1)
     expected = value * F.silu(gate)
-    actual = ops.h3_swiglu(packed)
+    actual = ops.packed_swiglu(packed)
     assert torch.equal(actual, expected)
     assert torch.equal(torch.signbit(actual), torch.signbit(expected))
 
@@ -40,6 +40,6 @@ def test_swiglu_above_int32_address_boundary(accelerator):
     assert packed.numel() > 2**31
     value, gate = packed.chunk(2, -1)
     expected = value * F.silu(gate)
-    actual = ops.h3_swiglu(packed)
+    actual = ops.packed_swiglu(packed)
     assert torch.equal(actual, expected)
     assert torch.equal(actual[-1], expected[-1])

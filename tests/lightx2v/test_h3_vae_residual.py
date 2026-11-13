@@ -18,7 +18,7 @@ import torch.nn.functional as F
 
 import flag_omni.lightx2v as ops
 
-pytestmark = [pytest.mark.h3_vae_residual, pytest.mark.h3_vae_residual_norm]
+pytestmark = [pytest.mark.scaled_residual, pytest.mark.residual_rms_norm]
 
 
 def test_vae_residual_and_norm(accelerator):
@@ -27,11 +27,11 @@ def test_vae_residual_and_norm(accelerator):
     update = torch.randn_like(x, dtype=torch.float16)
     scale = torch.randn_like(weight)
     expected_residual = x + update.float() * scale
-    residual = ops.h3_vae_residual(x, update, scale)
+    residual = ops.scaled_residual(x, update, scale)
     assert torch.equal(residual, expected_residual)
-    norm = ops.h3_vae_residual_norm(x, weight, 1e-5)
+    norm = ops.residual_rms_norm(x, weight, 1e-5)
     assert torch.equal(norm, F.rms_norm(x, (2048,), weight, 1e-5).half())
-    fused_residual, fused_norm = ops.h3_vae_residual_norm(
+    fused_residual, fused_norm = ops.residual_rms_norm(
         x, weight, 1e-5, update=update, scale=scale
     )
     assert torch.equal(fused_residual, expected_residual)

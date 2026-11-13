@@ -62,7 +62,6 @@ FlagOmni is developed in collaboration with operator libraries, compilers, and i
 FlagOmni/
 ├── src/flag_omni/
 │   ├── lightx2v/                   # LightX2V generic Triton operators (norm, activation, fusion …)
-│   │   ├── models/                 # Model-specific contracts/adapters
 │   │   └── ops/                    # Portable operator implementations
 │   ├── runtime/
 │   │   └── backend/                # Multi-hardware backends: vendor → framework
@@ -86,7 +85,7 @@ FlagOmni/
 └── pyproject.toml
 ```
 
-Generic operators live in `src/flag_omni/<framework>/ops/`, model contracts in `<framework>/models/`, hardware specializations in `runtime/backend/_<vendor>/<framework>/`. Each framework and hardware backend stays fully isolated.
+Generic operators live in `src/flag_omni/<framework>/ops/`, hardware specializations in `runtime/backend/_<vendor>/<framework>/`. Each framework and hardware backend stays fully isolated.
 
 ### Adding a New Framework
 

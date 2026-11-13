@@ -23,16 +23,16 @@ _OPERATORS = {
         "runtime.backend._mthreads.lightx2v.mp31.sage_attention",
         "sage_attention_s5000_quantized",
     ),
-    "h3_rotary_tables": (
+    "rotary_tables": (
         "runtime.backend._nvidia.lightx2v.hopper.rotary_tables",
         "rotary_position_tables",
     ),
-    "h3_reference_blend": ("lightx2v.ops.reference_blend", "h3_reference_blend"),
-    "h3_rms_norm": ("lightx2v.ops.rms_norm.baseline", "rms_norm_baseline"),
-    "h3_swiglu": ("lightx2v.ops.fusions.swiglu", "swiglu"),
-    "h3_vae_qk_norm_rope": ("lightx2v.ops.fusions.qk_norm_rope", "qk_norm_rope"),
-    "h3_vae_residual": ("lightx2v.ops.fusions.residual", "residual"),
-    "h3_vae_residual_norm": ("lightx2v.ops.fusions.residual_norm", "residual_norm"),
+    "reference_blend": ("lightx2v.ops.reference_blend", "reference_blend"),
+    "rms_norm": ("lightx2v.ops.rms_norm.baseline", "rms_norm_baseline"),
+    "packed_swiglu": ("lightx2v.ops.fusions.swiglu", "swiglu"),
+    "qk_norm_rope": ("lightx2v.ops.fusions.qk_norm_rope", "qk_norm_rope"),
+    "scaled_residual": ("lightx2v.ops.fusions.residual", "residual"),
+    "residual_rms_norm": ("lightx2v.ops.fusions.residual_norm", "residual_norm"),
 }
 
 
@@ -61,7 +61,7 @@ def resolve_kernel(name, *, device=None, tier="baseline"):
             raise ValueError("A device is required for capability-based selection")
     elif device.type not in ("cuda", "musa"):
         raise NotImplementedError("LightX2V kernels require a CUDA or MUSA device")
-    if name == "h3_rotary_tables":
+    if name == "rotary_tables":
         import torch
 
         if (
@@ -72,7 +72,7 @@ def resolve_kernel(name, *, device=None, tier="baseline"):
             raise NotImplementedError(
                 "Native-order H3 FP64 frequency tables are validated on SM90 only"
             )
-    if name == "h3_rms_norm":
+    if name == "rms_norm":
         if tier == "auto":
             if device is not None and device.type == "cuda":
                 import torch
@@ -130,10 +130,10 @@ def get_op(name, *, device=None, tier=None):
         raise ValueError("tier must be auto, baseline, tle, or sm90")
     if device is not None and device.type not in ("cuda", "musa"):
         raise NotImplementedError("LightX2V kernels require CUDA or MUSA")
-    if name == "h3_reference_blend":
-        from ..lightx2v import h3_reference_blend
+    if name == "reference_blend":
+        from ..lightx2v import reference_blend
 
-        return h3_reference_blend
-    from ..lightx2v.models import h3
+        return reference_blend
+    from ..lightx2v.ops import api
 
-    return partial(getattr(h3, name), tier=tier)
+    return partial(getattr(api, name), tier=tier)

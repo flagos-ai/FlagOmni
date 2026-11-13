@@ -17,7 +17,7 @@ import torch
 
 import flag_omni.lightx2v as ops
 
-pytestmark = pytest.mark.h3_rotary_tables
+pytestmark = pytest.mark.rotary_tables
 
 
 def test_rotary_native_tables(accelerator):
@@ -38,6 +38,6 @@ def test_rotary_native_tables(accelerator):
     phase = positions.unsqueeze(-1) * inv.view(1, 1, -1)
     phase = torch.cat(tuple(phase.unbind(1)), -1)
     phase = torch.cat((phase, phase), -1)
-    actual = ops.h3_rotary_tables(positions, freq_dim, theta)
+    actual = ops.rotary_tables(positions, freq_dim, theta)
     for candidate, reference in zip(actual, (phase.cos(), phase.sin())):
         assert torch.equal(candidate, reference)

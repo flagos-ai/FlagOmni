@@ -19,7 +19,7 @@ import torch.nn.functional as F
 import flag_omni.lightx2v as ops
 
 
-@pytest.mark.h3_swiglu
+@pytest.mark.packed_swiglu
 def test_h3_swiglu(accelerator, benchmark):
     packed = torch.randn((1108, 28672), device=accelerator, dtype=torch.bfloat16)
 
@@ -29,7 +29,7 @@ def test_h3_swiglu(accelerator, benchmark):
 
     benchmark(
         native_swiglu,
-        lambda: ops.h3_swiglu(packed),
+        lambda: ops.packed_swiglu(packed),
         shape=packed.shape,
         dtype=packed.dtype,
     )

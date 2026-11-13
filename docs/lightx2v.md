@@ -18,13 +18,13 @@ and FlagTree, with generic implementations and vendor/architecture backends.
 
 | API | Contract |
 |---|---|
-| `h3_rms_norm` | BF16 D128/D5376; FP32 weight multiplication before the final cast |
-| `h3_swiglu` | Packed `[value, gate]`; input-precision SiLU before multiplication |
-| `h3_vae_qk_norm_rope` | D64 Q/K normalization and 48-channel split rotary embedding |
-| `h3_vae_residual` | FP32 state/scale with FP16 update |
-| `h3_vae_residual_norm` | D2048 FP32 residual/RMS with FP16 normalized output |
-| `h3_reference_blend` | FP32 reference-blend update |
-| `h3_rotary_tables` | SM90 rotary position tables |
+| `rms_norm` | BF16 D128/D5376; FP32 weight multiplication before the final cast |
+| `packed_swiglu` | Packed `[value, gate]`; input-precision SiLU before multiplication |
+| `qk_norm_rope` | D64 Q/K normalization and 48-channel split rotary embedding |
+| `scaled_residual` | FP32 state/scale with FP16 update |
+| `residual_rms_norm` | D2048 FP32 residual/RMS with FP16 normalized output |
+| `reference_blend` | FP32 reference-blend update |
+| `rotary_tables` | SM90 rotary position tables |
 
 The RMS `tier` selects ordinary Triton (`baseline`), MTT S5000 TLE (`tle`),
 or NVIDIA SM90 Gluon/PTX (`sm90`). Advanced tiers require a compatible compiler.
@@ -48,7 +48,7 @@ import flag_omni.lightx2v
 
 x = torch.randn((44, 5376), device="cuda", dtype=torch.bfloat16)
 weight = torch.ones(5376, device=x.device, dtype=x.dtype)
-y = flag_omni.lightx2v.h3_rms_norm(x, weight, eps=1e-5, tier="baseline")
+y = flag_omni.lightx2v.rms_norm(x, weight, eps=1e-5, tier="baseline")
 ```
 
 SageAttention adds an ordinary Triton BF16-PV baseline, the final NVIDIA SM90
@@ -92,8 +92,8 @@ This project is licensed under the [Apache 2.0 License](../LICENSE).
 src/flag_omni/
   lightx2v/
     __init__.py                 # stable public exports
-    models/h3.py                # H3-specific numerical contracts/adapters
     ops/
+      api.py                    # public numerical contracts
       reference_blend.py
       rms_norm/                 # portable baseline and helpers
       fusions/                  # swiglu, qk_norm_rope, residual, residual_norm
@@ -107,16 +107,17 @@ src/flag_omni/
         mp31/                   # S5000/MP31 prequantized wrapper and core
 ```
 
-Model names belong in adapters/contracts, not in the portable operator directory.
+Model integration belongs in [lightx2v-plugin-FL](https://github.com/flagos-ai/lightx2v-plugin-FL),
+not this operator repository. FlagOmni has no model adapter directory. H3 policy
+names, registry wiring, weight staging and lifecycle hooks stay in plugin PR #8;
+that plugin maps its `h3_*` policies to the operation-named public APIs above.
 Vendor checks, launch tuning, SDK handling and architecture kernels belong in the
-runtime/backend hierarchy. Portable operator APIs request runtime dispatch rather
-than importing a specific vendor implementation. Tests may name a hardware target
-when they verify that backend's explicit contract.
+runtime/backend hierarchy. Portable APIs request runtime dispatch rather than
+importing a specific vendor implementation.
 
-Existing top-level `flag_omni.lightx2v.h3_*` and
-`sage_attention_s5000_quantized` exports remain compatibility APIs. The latter is
-an explicit prequantized contract, not an automatic replacement for raw-QKV
-SageAttention. Its implementation and preparation API now live at
-`flag_omni.runtime.backend._mthreads.lightx2v.mp31.sage_attention`.
-Private module paths changed; import operators through the top-level public API.
-No model loading, patching or scheduling is introduced by `models/h3.py`.
+This initial, unmerged API replaces the provisional `h3_*` exports with the names
+in the API table. The plugin pins the matching full FlagOmni commit, so neither
+repository relies on a model-specific operator API. The explicit
+`sage_attention_s5000_quantized` contract remains available; its implementation
+and preparation API live in the MP31 backend. Private module paths changed;
+consumers should use the top-level public APIs.

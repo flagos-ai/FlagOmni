@@ -43,21 +43,21 @@ def test_operator_inventory_and_unknown_lookup():
     with pytest.raises(ValueError, match="Unknown"):
         ops.get_op("not_an_operator")
     with pytest.raises(ValueError, match="tier"):
-        ops.get_op("h3_swiglu", tier="not_a_tier")
+        ops.get_op("packed_swiglu", tier="not_a_tier")
 
 
 @pytest.mark.parametrize(
     "name,args",
     [
-        ("h3_swiglu", lambda: (torch.empty(1, 8),)),
-        ("h3_rms_norm", lambda: (torch.empty(1, 128), torch.empty(128))),
+        ("packed_swiglu", lambda: (torch.empty(1, 8),)),
+        ("rms_norm", lambda: (torch.empty(1, 128), torch.empty(128))),
         (
-            "h3_vae_residual",
+            "scaled_residual",
             lambda: (torch.empty(1, 2048), torch.empty(1, 2048), torch.empty(2048)),
         ),
-        ("h3_vae_residual_norm", lambda: (torch.empty(1, 2048), torch.empty(2048))),
+        ("residual_rms_norm", lambda: (torch.empty(1, 2048), torch.empty(2048))),
         (
-            "h3_vae_qk_norm_rope",
+            "qk_norm_rope",
             lambda: (
                 torch.empty(1, 1, 1, 64),
                 torch.empty(1, 1, 1, 64),
@@ -66,7 +66,7 @@ def test_operator_inventory_and_unknown_lookup():
             ),
         ),
         (
-            "h3_reference_blend",
+            "reference_blend",
             lambda: (torch.empty(1), torch.empty(1), torch.empty(1), torch.ones(2), 0),
         ),
     ],
@@ -83,7 +83,7 @@ def test_cpu_is_rejected_without_loading_advanced_implementations(name, args):
 
 
 def test_lookup_cannot_bypass_public_input_guards():
-    fn = ops.get_op("h3_swiglu")
+    fn = ops.get_op("packed_swiglu")
     with pytest.raises(NotImplementedError):
         fn(torch.empty((1, 8)))
 
@@ -106,7 +106,7 @@ def test_framework_qualified_dispatch(monkeypatch, tier, device, capability, mod
     monkeypatch.setattr(op_registrar, "_load", lambda path, symbol: path)
     assert (
         op_registrar.resolve_kernel(
-            "h3_rms_norm", device=SimpleNamespace(type=device), tier=tier
+            "rms_norm", device=SimpleNamespace(type=device), tier=tier
         )
         == module
     )
@@ -120,10 +120,14 @@ def test_registry_uses_target_framework_schema():
     registry = Path(__file__).resolve().parents[2] / "conf" / "operators.yaml"
     entries = yaml.safe_load(registry.read_text())["ops"]
     h3_entries = {
-        entry["id"]: entry for entry in entries if entry["id"].startswith("h3_")
+        entry["id"]: entry
+        for entry in entries
+        if not entry["id"].startswith("sage_attention")
     }
     assert set(h3_entries) == {
-        name for name in ops.all_registered_ops() if name.startswith("h3_")
+        name
+        for name in ops.all_registered_ops()
+        if not name.startswith("sage_attention")
     }
     assert all(entry["from"] == ["lightx2v"] for entry in h3_entries.values())
 

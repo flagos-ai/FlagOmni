@@ -15,35 +15,35 @@
 """LightX2V operators; import does not install hooks or load advanced kernels."""
 
 from ..runtime.op_registrar import all_registered_ops, get_op
-from .models.h3 import (
-    h3_rms_norm,
-    h3_rotary_tables,
-    h3_swiglu,
-    h3_vae_qk_norm_rope,
-    h3_vae_residual,
-    h3_vae_residual_norm,
+from .ops.api import (
+    packed_swiglu,
+    qk_norm_rope,
+    residual_rms_norm,
+    rms_norm,
+    rotary_tables,
+    scaled_residual,
 )
 
 __all__ = [
     "all_registered_ops",
     "get_op",
-    "h3_reference_blend",
-    "h3_rms_norm",
-    "h3_rotary_tables",
-    "h3_swiglu",
-    "h3_vae_qk_norm_rope",
-    "h3_vae_residual",
-    "h3_vae_residual_norm",
+    "reference_blend",
+    "rms_norm",
+    "rotary_tables",
+    "packed_swiglu",
+    "qk_norm_rope",
+    "scaled_residual",
+    "residual_rms_norm",
     "sage_attention",
     "sage_attention_s5000_quantized",
 ]
 
 
-def h3_reference_blend(sample, prediction, timestep, sigmas, step_index):
+def reference_blend(sample, prediction, timestep, sigmas, step_index):
     """Call the reference-blend API without importing Triton at package import."""
     if sample.device.type not in ("cuda", "musa"):
         raise NotImplementedError("Reference blend requires CUDA or MUSA")
-    from .ops.reference_blend import h3_reference_blend as implementation
+    from .ops.reference_blend import reference_blend as implementation
 
     return implementation(sample, prediction, timestep, sigmas, step_index)
 

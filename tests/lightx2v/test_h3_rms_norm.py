@@ -17,7 +17,7 @@ import torch
 
 import flag_omni.lightx2v as ops
 
-pytestmark = pytest.mark.h3_rms_norm
+pytestmark = pytest.mark.rms_norm
 
 
 @pytest.mark.parametrize("dimension", [128, 5376])
@@ -40,7 +40,7 @@ def test_rms_tiers(accelerator, dimension):
         tiers.append("sm90")
     before = x.clone(), weight.clone()
     for tier in tiers:
-        actual = ops.h3_rms_norm(x, weight, 1e-5, tier=tier)
+        actual = ops.rms_norm(x, weight, 1e-5, tier=tier)
         torch.testing.assert_close(actual.cpu(), expected, rtol=1e-3, atol=1e-3)
     assert torch.equal(x, before[0]) and torch.equal(weight, before[1])
 
@@ -52,14 +52,14 @@ def test_rms_graph_refresh(accelerator):
         )
     x = torch.randn((44, 5376), device=accelerator, dtype=torch.bfloat16)
     weight = torch.ones(5376, device=accelerator, dtype=x.dtype)
-    ops.h3_rms_norm(x, weight, 1e-5)
+    ops.rms_norm(x, weight, 1e-5)
     graph = torch.cuda.CUDAGraph()
     with torch.cuda.graph(graph):
-        output = ops.h3_rms_norm(x, weight, 1e-5)
+        output = ops.rms_norm(x, weight, 1e-5)
     for _ in range(3):
         x.normal_()
         output.fill_(float("nan"))
         graph.replay()
         torch.cuda.synchronize()
-        expected = ops.h3_rms_norm(x, weight, 1e-5)
+        expected = ops.rms_norm(x, weight, 1e-5)
         assert torch.equal(output, expected)

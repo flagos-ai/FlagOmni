@@ -21,7 +21,7 @@ from types import SimpleNamespace
 import pytest
 
 from flag_omni import lightx2v
-from flag_omni.lightx2v.models import h3
+from flag_omni.lightx2v.ops import api
 from flag_omni.runtime.sage_attention_dispatch import (
     baseline_launch_options,
     fp8_backend,
@@ -30,9 +30,9 @@ from flag_omni.runtime.sage_attention_dispatch import (
 ROOT = Path(__file__).resolve().parents[2] / "src/flag_omni"
 
 
-def test_model_contracts_keep_public_api_identity():
-    for name in ("h3_rms_norm", "h3_swiglu", "h3_vae_residual", "h3_rotary_tables"):
-        assert getattr(lightx2v, name) is getattr(h3, name)
+def test_operator_contracts_keep_public_api_identity():
+    for name in ("rms_norm", "packed_swiglu", "scaled_residual", "rotary_tables"):
+        assert getattr(lightx2v, name) is getattr(api, name)
 
 
 def test_portable_operators_do_not_import_vendor_implementations():
@@ -45,6 +45,8 @@ def test_portable_operators_do_not_import_vendor_implementations():
                 assert all("runtime.backend" not in a.name for a in node.names), source
     assert not (ROOT / "lightx2v/sage_attention_s5000.py").exists()
     assert not (ROOT / "lightx2v/h3.py").exists()
+    assert not (ROOT / "lightx2v/models").exists()
+    assert not any(name.startswith("h3_") for name in lightx2v.__all__)
     assert (
         ROOT / "runtime/backend/_mthreads/lightx2v/mp31/sage_attention.py"
     ).is_file()

@@ -61,7 +61,6 @@ FlagOmni 与 FlagOS 生态中的算子库、编译器和推理框架协作开发
 FlagOmni/
 ├── src/flag_omni/
 │   ├── lightx2v/                   # LightX2V 通用 Triton 算子（归一化、激活、融合…）
-│   │   ├── models/                 # Model-specific contracts/adapters
 │   │   └── ops/                    # Portable operator implementations
 │   ├── runtime/
 │   │   └── backend/                # 多硬件后端：厂商 → 框架

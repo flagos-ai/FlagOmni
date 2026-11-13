@@ -37,7 +37,7 @@ def _blend(X, PRED, TIME, SIGMAS, Y, N, STEP, BLOCK: tl.constexpr):
     tl.store(Y + offsets, result, offsets < N)
 
 
-def h3_reference_blend(sample, prediction, timestep, sigmas, step_index):
+def reference_blend(sample, prediction, timestep, sigmas, step_index):
     """FP32 update; the caller owns the schedule, index and state replacement.
 
     No input is mutated. Eager/graph callers must provide a valid nonzero current

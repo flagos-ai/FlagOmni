@@ -17,7 +17,7 @@ import torch
 
 import flag_omni.lightx2v as ops
 
-pytestmark = pytest.mark.h3_reference_blend
+pytestmark = pytest.mark.reference_blend
 
 
 def test_reference_blend_order(accelerator):
@@ -32,5 +32,5 @@ def test_reference_blend_order(accelerator):
         denoised = sample + (1.0 - timestep) * prediction
         expected = ratio * sample + (1.0 - ratio) * denoised
         assert torch.equal(
-            ops.h3_reference_blend(sample, prediction, timestep, sigmas, step), expected
+            ops.reference_blend(sample, prediction, timestep, sigmas, step), expected
         )

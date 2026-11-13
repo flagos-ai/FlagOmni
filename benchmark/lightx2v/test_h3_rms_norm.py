@@ -18,7 +18,7 @@ import torch
 import flag_omni.lightx2v as ops
 
 
-@pytest.mark.h3_rms_norm
+@pytest.mark.rms_norm
 def test_h3_rms_norm(accelerator, benchmark, request):
     x = torch.randn((1108, 5376), device=accelerator, dtype=torch.bfloat16)
     weight = torch.randn(5376, device=accelerator, dtype=x.dtype)
@@ -32,7 +32,7 @@ def test_h3_rms_norm(accelerator, benchmark, request):
 
     benchmark(
         native_rms,
-        lambda: ops.h3_rms_norm(x, weight, 1e-5, tier=tier),
+        lambda: ops.rms_norm(x, weight, 1e-5, tier=tier),
         shape=x.shape,
         dtype=x.dtype,
     )

@@ -24,12 +24,15 @@ relevant documentation alongside user-facing behavior.
 ## Implement and validate
 
 Place generic Triton operators under `src/flag_omni/<framework>/ops/`,
-model-specific numerical contracts/adapters under `<framework>/models/`, and
 hardware-specific implementations under
 `src/flag_omni/runtime/backend/_<vendor>/<framework>/`. Architecture-specific
 implementations belong below the framework directory (for example,
 `_nvidia/lightx2v/hopper/`). Keep corresponding tests and benchmarks in
 `tests/<framework>/` and `benchmark/<framework>/`.
+
+Model integration, model-specific policies, weight staging and lifecycle hooks belong
+in the framework plugin (for example `flagos-ai/lightx2v-plugin-FL`), not this
+operator repository. Public APIs are named by numerical operation, not model.
 
 Run the full test suite before opening a pull request:
 
