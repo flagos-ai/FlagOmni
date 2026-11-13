@@ -75,9 +75,9 @@ def test_fp8_device_rejection_precedes_backend_import(monkeypatch):
 
 
 def test_fp8_dispatch_returns_backend_without_running_it(monkeypatch):
-    import torch
-
-    monkeypatch.setattr("flag_omni.runtime.sage_attention_dispatch.is_nvidia_sm90", lambda device: True)
+    monkeypatch.setattr(
+        "flag_omni.runtime.sage_attention_dispatch.is_nvidia_sm90", lambda device: True
+    )
     fn = fp8_backend(SimpleNamespace(type="cuda"), "sm90")
     assert (
         fn.__module__
