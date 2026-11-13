@@ -17,6 +17,8 @@
 from functools import lru_cache
 from importlib import import_module
 
+from .capabilities import is_nvidia_sm90
+
 _OPERATORS = {
     "sage_attention": ("lightx2v.ops.sage_attention.api", "sage_attention"),
     "rotary_tables": (
@@ -57,37 +59,18 @@ def resolve_kernel(name, *, device=None, tier="baseline"):
             raise ValueError("A device is required for capability-based selection")
     elif device.type not in ("cuda", "musa"):
         raise NotImplementedError("LightX2V kernels require a CUDA or MUSA device")
-    if name == "rotary_tables":
-        import torch
-
-        if (
-            device is None
-            or device.type != "cuda"
-            or torch.cuda.get_device_capability(device) != (9, 0)
-        ):
-            raise NotImplementedError(
-                "Native-order H3 FP64 frequency tables are validated on SM90 only"
-            )
+    if name == "rotary_tables" and not is_nvidia_sm90(device):
+        raise NotImplementedError(
+            "Native-order H3 FP64 frequency tables are validated on SM90 only"
+        )
     if name == "rms_norm":
         if tier == "auto":
             if device is not None and device.type == "cuda":
-                import torch
-
-                tier = (
-                    "sm90"
-                    if torch.cuda.get_device_capability(device) == (9, 0)
-                    else "baseline"
-                )
+                tier = "sm90" if is_nvidia_sm90(device) else "baseline"
             else:
                 tier = "baseline"
         if tier == "sm90":
-            import torch
-
-            if (
-                device is None
-                or device.type != "cuda"
-                or torch.cuda.get_device_capability(device) != (9, 0)
-            ):
+            if not is_nvidia_sm90(device):
                 raise NotImplementedError(
                     "The SM90 RMS implementation requires CUDA SM90"
                 )

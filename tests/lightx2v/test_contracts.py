@@ -102,7 +102,7 @@ def test_framework_qualified_dispatch(monkeypatch, tier, device, capability, mod
 
     from flag_omni.runtime import op_registrar
 
-    monkeypatch.setattr(torch.cuda, "get_device_capability", lambda _: capability)
+    monkeypatch.setattr(op_registrar, "is_nvidia_sm90", lambda _: capability == (9, 0))
     monkeypatch.setattr(op_registrar, "_load", lambda path, symbol: path)
     assert (
         op_registrar.resolve_kernel(

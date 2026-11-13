@@ -14,15 +14,16 @@
 
 """Platform selection for SageAttention; never retry after an execution error."""
 
+from .capabilities import is_nvidia_sm90
+
 
 def fp8_backend(device, implementation):
     if implementation not in ("auto", "sm90"):
         raise NotImplementedError("FP8 PV requires implementation auto/sm90")
     if device.type != "cuda":
         raise NotImplementedError("FP8 PV SageAttention requires CUDA SM90")
-    import torch
 
-    if torch.cuda.get_device_capability(device) != (9, 0):
+    if not is_nvidia_sm90(device):
         raise NotImplementedError("FP8 PV SageAttention requires CUDA SM90")
     from .backend._nvidia.lightx2v.hopper.sage_attention import sage_attention
 
@@ -35,7 +36,7 @@ def baseline_launch_options(device, nq, nk):
         from .backend._mthreads.lightx2v.sage_attention import baseline_launch_options
 
         return baseline_launch_options(nq, nk)
-    return dict(bm=64, warps=8, ordered_pv=False)
+    return {"bm": 64, "warps": 8, "ordered_pv": False}
 
 
 def quantized_backend(device):
