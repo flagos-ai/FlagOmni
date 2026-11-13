@@ -106,7 +106,9 @@ def test_kernel_failure_is_not_caught(monkeypatch):
 def test_fp8_rejects_other_architecture_before_import(monkeypatch):
     before = {name for name in sys.modules if "sage_attention_impl" in name}
     q = TensorMetadata()
-    monkeypatch.setattr(torch.cuda, "get_device_capability", lambda device: (8, 0))
+    monkeypatch.setattr(
+        "flag_omni.runtime.sage_attention_dispatch.is_nvidia_sm90", lambda device: False
+    )
     with pytest.raises(NotImplementedError, match="SM90"):
         api.sage_attention(q, q, q, pv_dtype="fp8")
     assert {name for name in sys.modules if "sage_attention_impl" in name} == before
