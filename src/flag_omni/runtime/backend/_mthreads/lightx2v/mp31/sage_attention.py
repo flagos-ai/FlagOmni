@@ -65,7 +65,7 @@ def prepare_sage_attention_s5000(
     _validate(query, key, value, query_scale, key_scale, value_scale)
     if not isinstance(diagnostic, bool):
         raise TypeError("diagnostic must be a bool")
-    from flag_omni.runtime.backend._mthreads.lightx2v.sage_attention_impl.launcher import (
+    from flag_omni.runtime.backend._mthreads.lightx2v.mp31.sage_attention_impl.launcher import (
         PreparedSageAttention,
     )
 

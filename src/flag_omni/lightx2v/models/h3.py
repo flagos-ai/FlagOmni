@@ -19,7 +19,7 @@ import math
 
 import torch
 
-from ..runtime.op_registrar import resolve_kernel
+from ...runtime.op_registrar import resolve_kernel
 
 logger = logging.getLogger(__name__)
 

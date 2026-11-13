@@ -24,7 +24,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-api = importlib.import_module("flag_omni.lightx2v._sage_attention")
+api = importlib.import_module("flag_omni.lightx2v.ops.sage_attention.api")
 
 
 class TensorMetadata:
@@ -47,7 +47,7 @@ def test_sage_import_is_lazy():
     script = f"""
 import sys
 sys.path.insert(0, {str(root)!r})
-from flag_omni.lightx2v._sage_attention import sage_attention
+from flag_omni.lightx2v.ops.sage_attention.api import sage_attention
 assert not any("sage_attention_impl" in name for name in sys.modules)
 assert not any(name == "triton" or name.startswith("triton.") for name in sys.modules)
 """
@@ -91,7 +91,7 @@ def test_kernel_failure_is_not_caught(monkeypatch):
     q = TensorMetadata()
     monkeypatch.setitem(
         sys.modules,
-        "flag_omni.lightx2v.sage_attention_baseline",
+        "flag_omni.lightx2v.ops.sage_attention.baseline",
         SimpleNamespace(core=object()),
     )
 

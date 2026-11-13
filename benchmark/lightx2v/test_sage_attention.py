@@ -22,7 +22,7 @@ SDPA timings are not substituted for this numerical contract.
 import pytest
 import torch
 
-from flag_omni.lightx2v._sage_attention import sage_attention
+from flag_omni.lightx2v.ops.sage_attention.api import sage_attention
 
 
 @pytest.mark.parametrize("nq,nk", [(44, 44), (1108, 1792), (9529, 9529)])

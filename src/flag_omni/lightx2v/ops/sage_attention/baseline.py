@@ -17,7 +17,7 @@
 import triton
 import triton.language as tl
 
-from .sage_attention_math import probability_sum
+from .math import probability_sum
 
 
 @triton.jit(do_not_specialize=["NQ", "NK"])

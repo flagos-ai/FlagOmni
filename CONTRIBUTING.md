@@ -23,7 +23,8 @@ relevant documentation alongside user-facing behavior.
 
 ## Implement and validate
 
-Place generic Triton operators under `src/flag_omni/<framework>/` and
+Place generic Triton operators under `src/flag_omni/<framework>/ops/`,
+model-specific numerical contracts/adapters under `<framework>/models/`, and
 hardware-specific implementations under
 `src/flag_omni/runtime/backend/_<vendor>/<framework>/`. Architecture-specific
 implementations belong below the framework directory (for example,

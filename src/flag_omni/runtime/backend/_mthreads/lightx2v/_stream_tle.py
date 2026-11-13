@@ -19,8 +19,8 @@ import triton as tr
 import triton.experimental.tle.language as tle
 import triton.language as tl
 
-from flag_omni.lightx2v._rms._ordered import validate
-from flag_omni.lightx2v._rms._stream import stream_inverse
+from flag_omni.lightx2v.ops.rms_norm._ordered import validate
+from flag_omni.lightx2v.ops.rms_norm._stream import stream_inverse
 
 
 @tr.jit

@@ -95,10 +95,10 @@ def validate_sage_inputs(
     return scale
 
 
-def run_bf16_sage(query, key, value, *, tensor_layout, scale, core, ordered_pv=False):
+def run_bf16_sage(query, key, value, *, tensor_layout, scale, core):
     # Imports are deliberately below capability selection: the baseline does
     # not import a TLE/Gluon/SM90 module, including during dependency scanning.
-    from .sage_attention_quantization import quantize_qk
+    from .quantization import quantize_qk
 
     with (
         torch.cuda.device(query.device)
@@ -110,23 +110,19 @@ def run_bf16_sage(query, key, value, *, tensor_layout, scale, core, ordered_pv=F
         output = torch.empty(
             (batch, nq, heads, dimension), dtype=query.dtype, device=query.device
         )
-        use_ordered = ordered_pv and z[2].shape[2] <= 128
-        bm = (
-            16
-            if use_ordered
-            else (128 if query.device.type == "musa" and nq >= 2048 else 64)
-        )
-        warps = 16 if bm == 128 and query.device.type == "musa" else 8
+        from flag_omni.runtime.sage_attention_dispatch import baseline_launch_options
+
+        options = baseline_launch_options(query.device, nq, z[2].shape[2])
         core(
             z,
             output,
             sm_scale=scale,
-            bm=bm,
-            warps=warps,
+            bm=options["bm"],
+            warps=options["warps"],
             stages=1,
             sum_mode=1,
             precise_div=True,
-            ordered_pv=use_ordered,
+            ordered_pv=options["ordered_pv"],
         )
         return output.permute(0, 2, 1, 3) if tensor_layout == "HND" else output
 
@@ -150,10 +146,9 @@ def sage_attention(
     be explicitly requested on a backend providing that numerical contract.
     """
     if pv_dtype == "fp8":
-        from flag_omni.runtime.backend._nvidia.lightx2v.hopper.sage_attention import (
-            sage_attention as sm90,
-        )
+        from flag_omni.runtime.sage_attention_dispatch import fp8_backend
 
+        sm90 = fp8_backend(query.device, implementation)
         return sm90(
             query,
             key,
@@ -177,7 +172,7 @@ def sage_attention(
         raise NotImplementedError(
             "The generic SageAttention implementation is baseline only"
         )
-    from .sage_attention_baseline import core
+    from .baseline import core
 
     return run_bf16_sage(
         query,
@@ -186,5 +181,4 @@ def sage_attention(
         tensor_layout=tensor_layout,
         scale=scale,
         core=core,
-        ordered_pv=query.device.type == "musa",
     )

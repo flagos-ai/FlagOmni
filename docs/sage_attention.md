@@ -46,7 +46,7 @@ FlagTree TLE with SM90 TMA/WGMMA support is required for execution.
 ## Final MThreads S5000 / MP31 TLE
 
 The final Triton core is provided separately as
-`lightx2v.sage_attention_s5000_quantized`. It is explicitly a **prequantized,
+`runtime.backend._mthreads.lightx2v.mp31.sage_attention_quantized`. It is explicitly a **prequantized,
 fixed-shape** kernel, not a replacement for the full-call generic API. It does
 not call MATE, and the older MATE quantization recipe is not interchangeable.
 The R3473 and R3704/R3791 frozen Triton and layout source files are byte-identical.
@@ -73,12 +73,12 @@ also returns the FP32 values from the same invocation before the RNE BF16 cast.
 
 ```python
 # qi/ki/vf and qs/ks/vs are already quantized with the above contract.
-y = lightx2v.sage_attention_s5000_quantized(qi, ki, vf, qs, ks, vs)
-y, fp32 = lightx2v.sage_attention_s5000_quantized(
+y = runtime.backend._mthreads.lightx2v.mp31.sage_attention_quantized(qi, ki, vf, qs, ks, vs)
+y, fp32 = runtime.backend._mthreads.lightx2v.mp31.sage_attention_quantized(
     qi, ki, vf, qs, ks, vs, diagnostic=True)
 
 # Prepare outside capture; keep this owner alive while a graph uses its buffers.
-from flag_omni.lightx2v.sage_attention_s5000 import prepare_sage_attention_s5000
+from flag_omni.runtime.backend._mthreads.lightx2v.mp31.sage_attention import prepare_sage_attention_s5000
 prepared = prepare_sage_attention_s5000(qi, ki, vf, qs, ks, vs)
 y = prepared.run()
 ```

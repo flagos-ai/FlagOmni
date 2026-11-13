@@ -15,7 +15,7 @@
 """LightX2V operators; import does not install hooks or load advanced kernels."""
 
 from ..runtime.op_registrar import all_registered_ops, get_op
-from .h3 import (
+from .models.h3 import (
     h3_rms_norm,
     h3_rotary_tables,
     h3_swiglu,
@@ -43,20 +43,22 @@ def h3_reference_blend(sample, prediction, timestep, sigmas, step_index):
     """Call the reference-blend API without importing Triton at package import."""
     if sample.device.type not in ("cuda", "musa"):
         raise NotImplementedError("Reference blend requires CUDA or MUSA")
-    from ._h3_reference_blend import h3_reference_blend as implementation
+    from .ops.reference_blend import h3_reference_blend as implementation
 
     return implementation(sample, prediction, timestep, sigmas, step_index)
 
 
 def sage_attention(*args, **kwargs):
     """Call the SageAttention API without importing optional kernels at package import."""
-    from ._sage_attention import sage_attention as implementation
+    from .ops.sage_attention.api import sage_attention as implementation
 
     return implementation(*args, **kwargs)
 
 
 def sage_attention_s5000_quantized(*args, **kwargs):
     """Call the explicit S5000 prequantized API; never selected automatically."""
-    from .sage_attention_s5000 import sage_attention_s5000_quantized as implementation
+    from ..runtime.backend._mthreads.lightx2v.mp31.sage_attention import (
+        sage_attention_s5000_quantized as implementation,
+    )
 
     return implementation(*args, **kwargs)

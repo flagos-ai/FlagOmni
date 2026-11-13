@@ -18,7 +18,7 @@
 import pytest
 import torch
 
-from flag_omni.lightx2v._sage_attention import sage_attention
+from flag_omni.lightx2v.ops.sage_attention.api import sage_attention
 
 
 def quantized_reference(q, k, v):

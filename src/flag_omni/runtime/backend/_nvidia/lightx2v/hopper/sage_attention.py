@@ -36,8 +36,8 @@ def sage_attention(
     implementation="auto",
 ):
     logger.debug("GEMS_NVIDIA SAGE_ATTENTION")
-    from flag_omni.lightx2v._sage_attention import sage_attention as baseline
-    from flag_omni.lightx2v._sage_attention import validate_sage_inputs
+    from flag_omni.lightx2v.ops.sage_attention.api import sage_attention as baseline
+    from flag_omni.lightx2v.ops.sage_attention.api import validate_sage_inputs
 
     if pv_dtype == "bf16":
         return baseline(

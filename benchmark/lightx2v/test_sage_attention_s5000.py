@@ -24,7 +24,9 @@ import torch
 def test_sage_attention_s5000_wrapper_latency(accelerator):
     if accelerator.type != "musa" or os.environ.get("FLAGOMNI_BENCH_S5000") != "1":
         pytest.skip("Set FLAGOMNI_BENCH_S5000=1 on an exclusively allocated S5000")
-    from flag_omni.lightx2v.sage_attention_s5000 import prepare_sage_attention_s5000
+    from flag_omni.runtime.backend._mthreads.lightx2v.mp31.sage_attention import (
+        prepare_sage_attention_s5000,
+    )
 
     q = torch.zeros((1, 34498, 7, 128), device=accelerator, dtype=torch.int8)
     k = torch.zeros_like(q)

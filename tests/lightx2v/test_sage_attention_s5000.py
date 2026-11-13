@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 import torch
 
-from flag_omni.lightx2v.sage_attention_s5000 import _validate
+from flag_omni.runtime.backend._mthreads.lightx2v.mp31.sage_attention import _validate
 
 
 def _meta_inputs():
@@ -49,7 +49,7 @@ def test_s5000_rejects_wrong_shape(index):
 
 def test_s5000_no_sdk14_custom_pass(tmp_path):
     module = importlib.import_module(
-        "flag_omni.runtime.backend._mthreads.lightx2v.sage_attention_impl.config"
+        "flag_omni.runtime.backend._mthreads.lightx2v.mp31.sage_attention_impl.config"
     )
     (tmp_path / "bin").mkdir()
     for name in ("llc", "ld.lld"):
@@ -68,7 +68,7 @@ def test_s5000_no_sdk14_custom_pass(tmp_path):
 
 def test_s5000_requires_explicit_sdk(tmp_path):
     module = importlib.import_module(
-        "flag_omni.runtime.backend._mthreads.lightx2v.sage_attention_impl.config"
+        "flag_omni.runtime.backend._mthreads.lightx2v.mp31.sage_attention_impl.config"
     )
     with pytest.raises(RuntimeError, match="MUSA SDK"):
         module.compiler_options(tmp_path)
@@ -80,7 +80,7 @@ def test_s5000_rejects_code_substitution(monkeypatch, field):
     from types import SimpleNamespace
 
     config = importlib.import_module(
-        "flag_omni.runtime.backend._mthreads.lightx2v.sage_attention_impl.config"
+        "flag_omni.runtime.backend._mthreads.lightx2v.mp31.sage_attention_impl.config"
     )
     settings = SimpleNamespace(replace_llir=False, replace_mubin=False)
     setattr(settings, field, "/unexpected/replacement")
@@ -103,7 +103,9 @@ def s5000(accelerator):
 
 
 def _prepare(*inputs, diagnostic):
-    from flag_omni.lightx2v.sage_attention_s5000 import prepare_sage_attention_s5000
+    from flag_omni.runtime.backend._mthreads.lightx2v.mp31.sage_attention import (
+        prepare_sage_attention_s5000,
+    )
 
     return prepare_sage_attention_s5000(
         *inputs,

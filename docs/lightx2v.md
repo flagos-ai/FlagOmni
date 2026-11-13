@@ -83,3 +83,40 @@ final cast. The large-address SwiGLU test allocates the 1080p packed shape.
 ## License
 
 This project is licensed under the [Apache 2.0 License](../LICENSE).
+
+## Code ownership and layout
+
+`lightx2v` is a framework namespace, not a model or hardware namespace:
+
+```text
+src/flag_omni/
+  lightx2v/
+    __init__.py                 # stable public exports
+    models/h3.py                # H3-specific numerical contracts/adapters
+    ops/
+      reference_blend.py
+      rms_norm/                 # portable baseline and helpers
+      fusions/                  # swiglu, qk_norm_rope, residual, residual_norm
+      sage_attention/           # API, baseline, quantization, math
+  runtime/
+    op_registrar.py             # lazy public lookup and kernel dispatch
+    sage_attention_dispatch.py # Sage platform selection
+    backend/
+      _nvidia/lightx2v/hopper/  # NVIDIA SM90 implementation
+      _mthreads/lightx2v/       # vendor tuning and implementations
+        mp31/                   # S5000/MP31 prequantized wrapper and core
+```
+
+Model names belong in adapters/contracts, not in the portable operator directory.
+Vendor checks, launch tuning, SDK handling and architecture kernels belong in the
+runtime/backend hierarchy. Portable operator APIs request runtime dispatch rather
+than importing a specific vendor implementation. Tests may name a hardware target
+when they verify that backend's explicit contract.
+
+Existing top-level `flag_omni.lightx2v.h3_*` and
+`sage_attention_s5000_quantized` exports remain compatibility APIs. The latter is
+an explicit prequantized contract, not an automatic replacement for raw-QKV
+SageAttention. Its implementation and preparation API now live at
+`flag_omni.runtime.backend._mthreads.lightx2v.mp31.sage_attention`.
+Private module paths changed; import operators through the top-level public API.
+No model loading, patching or scheduling is introduced by `models/h3.py`.

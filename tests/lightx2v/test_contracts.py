@@ -91,8 +91,8 @@ def test_lookup_cannot_bypass_public_input_guards():
 @pytest.mark.parametrize(
     "tier,device,capability,module",
     [
-        ("baseline", "cuda", (8, 0), "lightx2v._rms.baseline"),
-        ("auto", "cuda", (8, 0), "lightx2v._rms.baseline"),
+        ("baseline", "cuda", (8, 0), "lightx2v.ops.rms_norm.baseline"),
+        ("auto", "cuda", (8, 0), "lightx2v.ops.rms_norm.baseline"),
         ("auto", "cuda", (9, 0), "runtime.backend._nvidia.lightx2v.hopper.rms_norm"),
         ("tle", "musa", None, "runtime.backend._mthreads.lightx2v.tle"),
     ],
@@ -145,7 +145,7 @@ def test_swiglu_uses_portable_exact_libdevice_without_flaggems():
 
     source = (
         Path(__file__).resolve().parents[2]
-        / "src/flag_omni/lightx2v/_vae/basic_other_fusions.py"
+        / "src/flag_omni/lightx2v/ops/fusions/swiglu.py"
     ).read_text()
     tree = ast.parse(source)
     imports = [node for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
@@ -170,8 +170,8 @@ def test_swiglu_uses_portable_exact_libdevice_without_flaggems():
 def test_vae_module_import_does_not_require_flaggems():
     pytest.importorskip("triton")
     script = """import sys
-from flag_omni.lightx2v._vae import basic_other_fusions
-assert basic_other_fusions.libdevice.__name__ == 'triton.language.extra.libdevice'
+from flag_omni.lightx2v.ops.fusions import swiglu
+assert swiglu.libdevice.__name__ == 'triton.language.extra.libdevice'
 assert not any(name == 'flag_gems' or name.startswith('flag_gems.') for name in sys.modules)
 """
     subprocess.run([sys.executable, "-c", script], check=True)

@@ -23,7 +23,7 @@ import triton as tr
 import triton.experimental.tle.language as tle
 import triton.language as tl
 
-from flag_omni.lightx2v._rms._ordered import ordered_inverse, validate
+from flag_omni.lightx2v.ops.rms_norm._ordered import ordered_inverse, validate
 
 
 @tr.jit

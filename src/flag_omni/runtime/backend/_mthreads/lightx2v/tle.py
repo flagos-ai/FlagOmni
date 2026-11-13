@@ -14,7 +14,7 @@
 
 """Tier 2: ordinary Triton plus TLE, with only row inverses in shared memory."""
 
-from flag_omni.lightx2v._rms._ordered import validate
+from flag_omni.lightx2v.ops.rms_norm._ordered import validate
 
 from ._small_shared import rms_norm_tle as ordered
 from ._stream_tle import run as stream

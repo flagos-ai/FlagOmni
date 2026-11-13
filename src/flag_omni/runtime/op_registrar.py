@@ -18,21 +18,21 @@ from functools import lru_cache
 from importlib import import_module
 
 _OPERATORS = {
-    "sage_attention": ("lightx2v._sage_attention", "sage_attention"),
+    "sage_attention": ("lightx2v.ops.sage_attention.api", "sage_attention"),
     "sage_attention_s5000_quantized": (
-        "lightx2v.sage_attention_s5000",
+        "runtime.backend._mthreads.lightx2v.mp31.sage_attention",
         "sage_attention_s5000_quantized",
     ),
     "h3_rotary_tables": (
         "runtime.backend._nvidia.lightx2v.hopper.rotary_tables",
         "rotary_position_tables",
     ),
-    "h3_reference_blend": ("lightx2v._h3_reference_blend", "h3_reference_blend"),
-    "h3_rms_norm": ("lightx2v._rms.baseline", "rms_norm_baseline"),
-    "h3_swiglu": ("lightx2v._vae.basic_other_fusions", "swiglu"),
-    "h3_vae_qk_norm_rope": ("lightx2v._vae.basic_qk_norm_rope", "qk_norm_rope"),
-    "h3_vae_residual": ("lightx2v._vae.basic_other_fusions", "residual"),
-    "h3_vae_residual_norm": ("lightx2v._vae.basic_other_fusions_v3", "residual_norm"),
+    "h3_reference_blend": ("lightx2v.ops.reference_blend", "h3_reference_blend"),
+    "h3_rms_norm": ("lightx2v.ops.rms_norm.baseline", "rms_norm_baseline"),
+    "h3_swiglu": ("lightx2v.ops.fusions.swiglu", "swiglu"),
+    "h3_vae_qk_norm_rope": ("lightx2v.ops.fusions.qk_norm_rope", "qk_norm_rope"),
+    "h3_vae_residual": ("lightx2v.ops.fusions.residual", "residual"),
+    "h3_vae_residual_norm": ("lightx2v.ops.fusions.residual_norm", "residual_norm"),
 }
 
 
@@ -134,6 +134,6 @@ def get_op(name, *, device=None, tier=None):
         from ..lightx2v import h3_reference_blend
 
         return h3_reference_blend
-    from ..lightx2v import h3
+    from ..lightx2v.models import h3
 
     return partial(getattr(h3, name), tier=tier)
