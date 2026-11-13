@@ -110,3 +110,116 @@ def test_fp8_rejects_other_architecture_before_import(monkeypatch):
     with pytest.raises(NotImplementedError, match="SM90"):
         api.sage_attention(q, q, q, pv_dtype="fp8")
     assert {name for name in sys.modules if "sage_attention_impl" in name} == before
+
+
+def test_only_one_public_sage_operator():
+    import flag_omni.lightx2v as ops
+
+    assert [name for name in ops.__all__ if name.startswith("sage_attention")] == [
+        "sage_attention"
+    ]
+    assert [
+        name for name in ops.all_registered_ops() if name.startswith("sage_attention")
+    ] == ["sage_attention"]
+    with pytest.raises(ValueError, match="Unknown"):
+        ops.get_op("sage_attention_s5000_quantized")
+
+
+def test_prequantized_public_call_dispatches_without_changing_metadata(monkeypatch):
+    import flag_omni.lightx2v as ops
+    from flag_omni.runtime import sage_attention_dispatch
+
+    q = TensorMetadata()
+    q.device = SimpleNamespace(type="musa")
+    packet = dict(
+        format="per_thread_int8_fp8",
+        query_scale=object(),
+        key_scale=object(),
+        value_scale=object(),
+    )
+    workspace = {}
+    calls = []
+
+    def backend(*args, **kwargs):
+        calls.append((args, kwargs))
+        return "output"
+
+    def select(device):
+        assert device.type == "musa"
+        return backend
+
+    monkeypatch.setattr(sage_attention_dispatch, "quantized_backend", select)
+    assert (
+        ops.sage_attention(
+            q, q, q, pv_dtype="fp8", quantization=packet, workspace=workspace
+        )
+        == "output"
+    )
+    assert calls == [
+        (
+            (
+                q,
+                q,
+                q,
+                packet["query_scale"],
+                packet["key_scale"],
+                packet["value_scale"],
+            ),
+            dict(workspace=workspace, return_fp32=False),
+        )
+    ]
+
+
+def test_prequantized_execution_failure_is_not_retried(monkeypatch):
+    from flag_omni.runtime import sage_attention_dispatch
+
+    calls = []
+
+    def fail(*args, **kwargs):
+        calls.append(1)
+        raise RuntimeError("prequantized execution failed")
+
+    monkeypatch.setattr(
+        sage_attention_dispatch, "quantized_backend", lambda device: fail
+    )
+    q = TensorMetadata()
+    packet = dict(
+        format="per_thread_int8_fp8", query_scale=1, key_scale=1, value_scale=1
+    )
+    with pytest.raises(RuntimeError, match="prequantized execution failed"):
+        api.sage_attention(q, q, q, pv_dtype="fp8", quantization=packet)
+    assert calls == [1]
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        dict(pv_dtype="bf16"),
+        dict(pv_dtype="fp8", tensor_layout="HND"),
+        dict(pv_dtype="fp8", is_causal=True),
+        dict(pv_dtype="fp8", sm_scale=1.0),
+    ],
+)
+def test_prequantized_unsupported_contract_is_rejected_before_dispatch(
+    monkeypatch, kwargs
+):
+    from flag_omni.runtime import sage_attention_dispatch
+
+    monkeypatch.setattr(
+        sage_attention_dispatch,
+        "quantized_backend",
+        lambda device: pytest.fail("dispatched"),
+    )
+    q = TensorMetadata()
+    packet = dict(
+        format="per_thread_int8_fp8", query_scale=1, key_scale=1, value_scale=1
+    )
+    with pytest.raises((ValueError, NotImplementedError)):
+        api.sage_attention(q, q, q, quantization=packet, **kwargs)
+
+
+def test_prequantized_rejects_non_musa_before_import():
+    from flag_omni.runtime.sage_attention_dispatch import quantized_backend
+
+    with pytest.raises(NotImplementedError, match="MUSA MP31"):
+        quantized_backend(torch.device("cuda:0"))

@@ -138,6 +138,9 @@ def sage_attention(
     return_lse=False,
     pv_dtype="bf16",
     implementation="auto",
+    quantization=None,
+    workspace=None,
+    return_fp32=False,
 ):
     """INT8 QK/BF16 PV baseline using ordinary upstream Triton.
 
@@ -145,6 +148,44 @@ def sage_attention(
     The generic implementation accepts auto/baseline and BF16 PV only. FP8 PV must
     be explicitly requested on a backend providing that numerical contract.
     """
+    if quantization is not None:
+        if not isinstance(quantization, dict) or set(quantization) != {
+            "format",
+            "query_scale",
+            "key_scale",
+            "value_scale",
+        }:
+            raise ValueError("quantization requires format and query/key/value_scale")
+        if quantization["format"] != "per_thread_int8_fp8":
+            raise NotImplementedError("Unsupported SageAttention quantization format")
+        if pv_dtype != "fp8" or implementation != "auto":
+            raise ValueError(
+                "Prequantized inputs require pv_dtype='fp8' and automatic dispatch"
+            )
+        if tensor_layout != "NHD" or is_causal or return_lse:
+            raise NotImplementedError(
+                "Prequantized attention supports dense noncausal NHD output only"
+            )
+        if sm_scale is not None and float(sm_scale) != 128**-0.5:
+            raise NotImplementedError(
+                "Prequantized attention requires the standard D128 scale"
+            )
+        from flag_omni.runtime.sage_attention_dispatch import quantized_backend
+
+        return quantized_backend(query.device)(
+            query,
+            key,
+            value,
+            quantization["query_scale"],
+            quantization["key_scale"],
+            quantization["value_scale"],
+            workspace=workspace,
+            return_fp32=return_fp32,
+        )
+    if workspace is not None or return_fp32:
+        raise NotImplementedError(
+            "workspace/return_fp32 currently require prequantized inputs"
+        )
     if pv_dtype == "fp8":
         from flag_omni.runtime.sage_attention_dispatch import fp8_backend
 

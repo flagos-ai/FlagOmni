@@ -35,7 +35,6 @@ __all__ = [
     "scaled_residual",
     "residual_rms_norm",
     "sage_attention",
-    "sage_attention_s5000_quantized",
 ]
 
 
@@ -51,14 +50,5 @@ def reference_blend(sample, prediction, timestep, sigmas, step_index):
 def sage_attention(*args, **kwargs):
     """Call the SageAttention API without importing optional kernels at package import."""
     from .ops.sage_attention.api import sage_attention as implementation
-
-    return implementation(*args, **kwargs)
-
-
-def sage_attention_s5000_quantized(*args, **kwargs):
-    """Call the explicit S5000 prequantized API; never selected automatically."""
-    from ..runtime.backend._mthreads.lightx2v.mp31.sage_attention import (
-        sage_attention_s5000_quantized as implementation,
-    )
 
     return implementation(*args, **kwargs)

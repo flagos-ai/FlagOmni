@@ -19,10 +19,6 @@ from importlib import import_module
 
 _OPERATORS = {
     "sage_attention": ("lightx2v.ops.sage_attention.api", "sage_attention"),
-    "sage_attention_s5000_quantized": (
-        "runtime.backend._mthreads.lightx2v.mp31.sage_attention",
-        "sage_attention_s5000_quantized",
-    ),
     "rotary_tables": (
         "runtime.backend._nvidia.lightx2v.hopper.rotary_tables",
         "rotary_position_tables",
@@ -116,8 +112,8 @@ def get_op(name, *, device=None, tier=None):
     if name.startswith("sage_attention"):
         if tier is not None:
             raise ValueError(
-                "SageAttention does not accept an H3 tier; pass implementation/"
-                "pv_dtype to sage_attention, or call the explicit S5000 API"
+                "SageAttention selects its backend automatically; pass "
+                "pv_dtype and optional quantization metadata to sage_attention"
             )
         if device is not None and device.type not in ("cuda", "musa"):
             raise NotImplementedError("SageAttention requires CUDA or MUSA")

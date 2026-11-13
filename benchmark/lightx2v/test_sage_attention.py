@@ -19,10 +19,12 @@ Run with --tier sm90. Native Sage is the same-arithmetic reference;
 SDPA timings are not substituted for this numerical contract.
 """
 
+import os
+
 import pytest
 import torch
 
-from flag_omni.lightx2v.ops.sage_attention.api import sage_attention
+from flag_omni.lightx2v import sage_attention
 
 
 @pytest.mark.parametrize("nq,nk", [(44, 44), (1108, 1792), (9529, 9529)])
@@ -53,7 +55,58 @@ def test_sage_attention(nq, nk, accelerator, benchmark, request):
         )
 
     def candidate():
-        return sage_attention(q, k, v, pv_dtype="fp8", implementation="sm90")
+        return sage_attention(q, k, v, pv_dtype="fp8")
 
     assert torch.equal(reference(), candidate())
     benchmark(reference, candidate, shape=q.shape, dtype=q.dtype)
+
+
+@pytest.mark.benchmark
+def test_sage_attention_prequantized_latency(accelerator):
+    if accelerator.type != "musa" or os.environ.get("FLAGOMNI_BENCH_S5000") != "1":
+        pytest.skip("Set FLAGOMNI_BENCH_S5000=1 on an exclusively allocated S5000")
+    q = torch.zeros((1, 34498, 7, 128), device=accelerator, dtype=torch.int8)
+    k = torch.zeros_like(q)
+    v = torch.zeros_like(q, dtype=torch.float8_e4m3fn)
+    qs, ks, vs = [
+        torch.ones(shape, device=accelerator)
+        for shape in ((1, 7, 17280), (1, 7, 1080), (1, 7, 128))
+    ]
+    workspace = {}
+
+    def candidate():
+        return sage_attention(
+            q,
+            k,
+            v,
+            pv_dtype="fp8",
+            quantization=dict(
+                format="per_thread_int8_fp8",
+                query_scale=qs,
+                key_scale=ks,
+                value_scale=vs,
+            ),
+            workspace=workspace,
+        )
+
+    candidate()
+    for _ in range(25):
+        candidate()
+    torch.musa.synchronize()
+    samples = []
+    for _ in range(100):
+        start, end = [torch.musa.Event(enable_timing=True) for _ in range(2)]
+        start.record()
+        candidate()
+        end.record()
+        end.synchronize()
+        samples.append(start.elapsed_time(end))
+    print(
+        {
+            "scope": "prequantized K/V packing plus main kernel, prepared allocations/descriptors",
+            "warmup": 25,
+            "samples": 100,
+            "median_ms": sorted(samples)[len(samples) // 2],
+            "reference": "no paired baseline measured by this entrypoint",
+        }
+    )

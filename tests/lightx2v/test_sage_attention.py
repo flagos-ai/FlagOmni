@@ -15,10 +15,13 @@
 
 """Quantization-aware references; dense SDPA is not an FP8 Sage oracle."""
 
+import os
+from pathlib import Path
+
 import pytest
 import torch
 
-from flag_omni.lightx2v.ops.sage_attention.api import sage_attention
+from flag_omni.lightx2v import sage_attention
 
 
 def quantized_reference(q, k, v):
@@ -63,7 +66,7 @@ def test_sage_bf16_quantized_reference(nq, nk, layout, accelerator):
     reference = quantized_reference(q, k, v)
     before = [x.clone() for x in (q, k, v)]
     inputs = [x.permute(0, 2, 1, 3) if layout == "HND" else x for x in (q, k, v)]
-    actual = sage_attention(*inputs, tensor_layout=layout, implementation="baseline")
+    actual = sage_attention(*inputs, tensor_layout=layout)
     if layout == "HND":
         actual = actual.permute(0, 2, 1, 3)
     torch.testing.assert_close(actual.cpu(), reference, atol=1e-3, rtol=1e-3)
@@ -93,9 +96,7 @@ def test_sage_sm90_matches_native(nq, nk, layout):
         pv_accum_dtype="fp32+fp32",
         qk_quant_gran="per_thread",
     )
-    actual = sage_attention(
-        *inputs, tensor_layout=layout, pv_dtype="fp8", implementation="sm90"
-    )
+    actual = sage_attention(*inputs, tensor_layout=layout, pv_dtype="fp8")
     assert torch.equal(actual, expected)
 
 
@@ -151,7 +152,7 @@ def test_sage_sm90_zero_v(nk):
     k = torch.randn((1, nk, 2, 128), device=q.device, dtype=q.dtype)
     v = torch.zeros_like(k)
     # Native Sage can produce NaNs for zero V. The oracle here is analytical.
-    result = sage_attention(q, k, v, pv_dtype="fp8", implementation="sm90")
+    result = sage_attention(q, k, v, pv_dtype="fp8")
     assert torch.equal(result, torch.zeros_like(result))
 
 
@@ -175,5 +176,137 @@ def test_sage_sm90_strided_v(nk):
         pv_accum_dtype="fp32+fp32",
     )
     for _ in range(3):
-        actual = sage_attention(q, k, v, pv_dtype="fp8", implementation="sm90")
+        actual = sage_attention(q, k, v, pv_dtype="fp8")
         assert torch.equal(actual, expected)
+
+
+@pytest.fixture
+def prequantized_accelerator(accelerator):
+    if accelerator.type != "musa":
+        pytest.skip("Fixed-shape final kernel requires MUSA MP31")
+    import triton
+
+    if triton.runtime.driver.active.get_current_target().arch != 31:
+        pytest.skip("Fixed-shape final kernel requires MP31")
+    return accelerator
+
+
+class _PreparedQuantizedCase:
+    """Test helper exercising only the public operator, including graph replay."""
+
+    def __init__(self, inputs, diagnostic):
+        self.inputs = inputs
+        self.diagnostic = diagnostic
+        self.workspace = {}
+        self.run()  # Create backend-owned resources before graph capture.
+
+    def run(self):
+        q, k, v, qs, ks, vs = self.inputs
+        return sage_attention(
+            q,
+            k,
+            v,
+            pv_dtype="fp8",
+            quantization=dict(
+                format="per_thread_int8_fp8",
+                query_scale=qs,
+                key_scale=ks,
+                value_scale=vs,
+            ),
+            workspace=self.workspace,
+            return_fp32=self.diagnostic,
+        )
+
+
+def _prepare(*inputs, diagnostic):
+    return _PreparedQuantizedCase(inputs, diagnostic)
+
+
+def _packing_reference(tensor):
+    reference = torch.zeros((7, 34560, 128), dtype=tensor.dtype)
+    reference[:, :34498] = tensor[0].permute(1, 0, 2)
+    return reference
+
+
+def test_prequantized_accelerator_uniform_attention(prequantized_accelerator):
+    query = torch.zeros(
+        (1, 34498, 7, 128), dtype=torch.int8, device=prequantized_accelerator
+    )
+    key = torch.zeros_like(query)
+    # V varies with key, head, and channel. The zero scores have an independent
+    # arithmetic-mean oracle. Explicit byte checks also verify the V permutation.
+    row = torch.arange(34498)[:, None, None]
+    head = torch.arange(7)[None, :, None]
+    col = torch.arange(128)[None, None, :]
+    value_cpu = (
+        (((row + 3 * head + col) % 17 - 8).float() / 8)
+        .to(torch.float8_e4m3fn)
+        .unsqueeze(0)
+    )
+    value = value_cpu.to(prequantized_accelerator)
+    scales = [
+        torch.ones(shape, dtype=torch.float32, device=prequantized_accelerator)
+        for shape in ((1, 7, 17280), (1, 7, 1080), (1, 7, 128))
+    ]
+    prepared = _prepare(query, key, value, *scales, diagnostic=True)
+    output, fp32 = prepared.run()
+    torch.musa.synchronize()
+    reference = (
+        value_cpu.float().double().mean(1, keepdim=True).float().expand_as(fp32.cpu())
+    )
+    torch.testing.assert_close(fp32.cpu(), reference, atol=1e-3, rtol=1e-3)
+    assert torch.equal(output.cpu(), fp32.cpu().bfloat16())
+
+
+def test_prequantized_accelerator_external_quantized_packet(prequantized_accelerator):
+    """Optional full 30,910,208-element gate against an independent FP32 file.
+
+    Supply q/k/v/qs/ks/vs.bin and reference.fp32.bin in the fixture directory.
+    This does not bundle private model inputs in the public repository.
+    """
+    directory = os.environ.get("FLAGOMNI_S5000_FIXTURES")
+    if not directory:
+        pytest.skip("Set FLAGOMNI_S5000_FIXTURES for the independent full-output gate")
+    import numpy as np
+
+    directory = Path(directory)
+    inputs = []
+    specs = [
+        ("q", np.int8, torch.int8, (1, 34498, 7, 128)),
+        ("k", np.int8, torch.int8, (1, 34498, 7, 128)),
+        ("v", np.uint8, torch.float8_e4m3fn, (1, 34498, 7, 128)),
+        ("qs", np.float32, torch.float32, (1, 7, 17280)),
+        ("ks", np.float32, torch.float32, (1, 7, 1080)),
+        ("vs", np.float32, torch.float32, (1, 7, 128)),
+    ]
+    for name, dtype, torch_dtype, shape in specs:
+        array = np.fromfile(directory / (name + ".bin"), dtype=dtype)
+        inputs.append(
+            torch.from_numpy(array)
+            .view(torch_dtype)
+            .reshape(shape)
+            .to(prequantized_accelerator)
+        )
+    reference = torch.from_numpy(
+        np.fromfile(directory / "reference.fp32.bin", dtype=np.float32)
+    ).reshape(1, 34498, 7, 128)
+    diagnostic = _prepare(*inputs, diagnostic=True)
+    perf = _prepare(*inputs, diagnostic=False)
+    for _ in range(8):
+        output, fp32 = diagnostic.run()
+        actual = perf.run()
+        torch.musa.synchronize()
+        torch.testing.assert_close(fp32.cpu(), reference, atol=1e-3, rtol=1e-3)
+        assert torch.equal(output.cpu(), fp32.cpu().bfloat16())
+        assert torch.equal(output, actual)
+    graph = torch.musa.MUSAGraph()
+    with torch.musa.graph(graph):
+        graph_output, graph_fp32 = diagnostic.run()
+    for multiplier in (1.0, -1.0, 0.5, 1.0):
+        # Changing VS is linear; it also tests graph scale-input refresh.
+        inputs[5].mul_(multiplier)
+        expected = diagnostic.run()[0].clone()
+        graph.replay()
+        torch.musa.synchronize()
+        assert torch.equal(graph_output, expected)
+        assert torch.equal(graph_output, graph_fp32.bfloat16())

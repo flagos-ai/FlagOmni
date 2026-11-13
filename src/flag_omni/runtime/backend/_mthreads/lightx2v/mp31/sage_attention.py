@@ -44,7 +44,7 @@ def _validate(query, key, value, query_scale, key_scale, value_scale):
         raise ValueError("All tensors must be at least 16-byte aligned")
 
 
-def prepare_sage_attention_s5000(
+def _prepare(
     query,
     key,
     value,
@@ -58,7 +58,7 @@ def prepare_sage_attention_s5000(
     """Prepare a reusable launch with stable input storage.
 
     Inputs are already quantized with the SM90 per-thread recipe. This function
-    does not quantize raw QKV. See docs/sage_attention.md for exact scale indexing.
+    does not quantize raw QKV. Scale geometry is validated by _validate.
     Preparation performs compilation, allocation and descriptor creation. Run it
     before graph capture. Inputs may subsequently be updated in place.
     """
@@ -81,7 +81,7 @@ def prepare_sage_attention_s5000(
     )
 
 
-def sage_attention_s5000_quantized(
+def _run_quantized(
     query,
     key,
     value,
@@ -89,23 +89,44 @@ def sage_attention_s5000_quantized(
     key_scale,
     value_scale,
     *,
-    diagnostic=False,
-    sdk_path="/usr/local/musa",
+    workspace=None,
+    return_fp32=False,
 ):
-    """Run the qualified [1,34498,7,128] INT8-QK/FP8-PV core.
+    """Private MP31 implementation of the public prequantized input contract.
 
-    Return BF16 output, or (BF16, FP32) when diagnostic=True. Only the historical
-    prequantized core is hardware-qualified; this packaging wrapper has its own
-    validation scope. No SDK14 custom pass, fallback or precision change is used.
+    A caller-owned dict keeps a single launch alive for graph capture. It is
+    bound to input object/storage identity, and must not be shared
+    concurrently. No global tensor or descriptor cache is introduced.
     """
-    prepared = prepare_sage_attention_s5000(
-        query,
-        key,
-        value,
-        query_scale,
-        key_scale,
-        value_scale,
-        diagnostic=diagnostic,
-        sdk_path=sdk_path,
-    )
-    return prepared.run()
+    import os
+
+    import torch
+
+    _validate(query, key, value, query_scale, key_scale, value_scale)
+    if not isinstance(return_fp32, bool):
+        raise TypeError("return_fp32 must be a bool")
+    if workspace is not None and not isinstance(workspace, dict):
+        raise TypeError("workspace must be a caller-owned dict")
+    inputs = (query, key, value, query_scale, key_scale, value_scale)
+    with torch.musa.device(query.device):
+        signature = (tuple((id(t), t.data_ptr()) for t in inputs), return_fp32)
+        state = None if workspace is None else workspace.get("_sage_attention")
+        if state is not None:
+            if state[0] != signature:
+                raise ValueError(
+                    "SageAttention workspace is bound to its input storage"
+                )
+            prepared = state[1]
+        else:
+            if torch.musa.is_current_stream_capturing():
+                raise RuntimeError(
+                    "Warm up sage_attention with a workspace before graph capture"
+                )
+            prepared = _prepare(
+                *inputs,
+                diagnostic=return_fp32,
+                sdk_path=os.environ.get("FLAGOMNI_MUSA_SDK", "/usr/local/musa"),
+            )
+            if workspace is not None:
+                workspace["_sage_attention"] = (signature, prepared)
+        return prepared.run()

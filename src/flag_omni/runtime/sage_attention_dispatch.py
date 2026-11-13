@@ -36,3 +36,21 @@ def baseline_launch_options(device, nq, nk):
 
         return baseline_launch_options(nq, nk)
     return dict(bm=64, warps=8, ordered_pv=False)
+
+
+def quantized_backend(device):
+    """Select a backend implementing the prequantized contract before execution."""
+    if device.type != "musa":
+        raise NotImplementedError(
+            "Prequantized INT8/FP8 SageAttention currently requires MUSA MP31"
+        )
+    import torch
+    import triton
+
+    with torch.musa.device(device):
+        target = triton.runtime.driver.active.get_current_target()
+    if target.arch != 31:
+        raise NotImplementedError("Prequantized INT8/FP8 SageAttention requires MP31")
+    from .backend._mthreads.lightx2v.mp31.sage_attention import _run_quantized
+
+    return _run_quantized

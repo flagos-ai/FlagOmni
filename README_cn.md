@@ -14,13 +14,13 @@ FlagOmni 是一个使用 [Triton](https://github.com/triton-lang/triton) 实现�
 
 ## 已提供的 LightX2V 算子
 
-`flag_omni.lightx2v` 提供 H3 归一化、激活、VAE 融合、reference blend 和旋转位置表，
-以及通用 BF16-PV、NVIDIA SM90 FP8-PV 和固定 shape 的 S5000 预量化 SageAttention。
-三条 Sage 路径有独立数值合约，不会静默切换精度。导入包不会安装框架 hook 或加载高级编译模块。
-
-- [LightX2V API 与测试](docs/lightx2v.md)
-- [SageAttention 数值合约、最终源码与编译器依赖](docs/sage_attention.md)
-- [迁移验证范围与剩余限制](docs/lightx2v-validation.md)
+通用算子接口位于 `flag_omni.lightx2v`，模型策略与框架接线属于 `lightx2v-plugin-FL`。
+SageAttention 对外仅有 `sage_attention`，内部根据设备和数值契约分发。
+原始 BF16 QKV 在 CUDA/MUSA 上走通用实现；原始 FP8-PV 全调用目前仅支持 SM90。
+MP31 已有优化核通过同一入口的通用 `quantization` 元数据接收预量化输入，
+不冒充已接通原始 QKV 量化链。完整输入、scale、workspace 与工具链契约见
+[英文 README](README.md#available-lightx2v-operators)。不支持的组合在计算前报错，
+不静默降精度，不在执行失败后更换实现重试。
 
 ## 安装
 
@@ -128,5 +128,3 @@ FlagOmni/
 ## 许可证
 
 本项目基于 [Apache License 2.0](LICENSE) 许可。任何包含的第三方代码须保留其原始许可证和版权声明。
-
-模型适配、通用算子与平台实现的边界见[代码归属与目录布局](docs/lightx2v.md#code-ownership-and-layout)。

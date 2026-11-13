@@ -132,14 +132,14 @@ def test_registry_uses_target_framework_schema():
     assert all(entry["from"] == ["lightx2v"] for entry in h3_entries.values())
 
 
-@pytest.mark.parametrize("name", ["sage_attention", "sage_attention_s5000_quantized"])
+@pytest.mark.parametrize("name", ["sage_attention"])
 def test_sage_lookup_remains_lazy_and_does_not_inject_h3_tiers(name):
     loaded_before = set(sys.modules)
     assert ops.get_op(name) is getattr(ops, name)
     assert not any(
         "sage_attention" in module for module in set(sys.modules) - loaded_before
     )
-    with pytest.raises(ValueError, match="does not accept an H3 tier"):
+    with pytest.raises(ValueError, match="selects its backend automatically"):
         ops.get_op(name, tier="tle")
 
 
